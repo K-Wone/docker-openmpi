@@ -1,33 +1,92 @@
-FROM centos:centos8
+# stage 1: build OpenMPI with GCC
+ARG  GCC_VERSION=9.2.0
+FROM gcc:${GCC_VERSION} AS builder
 
+# define environment variables
+ARG OMPI_VERSION_MAJOR_MINOR
+ENV OMPI_VERSION_MAJOR_MINOR=${OMPI_VERSION_MAJOR_MINOR:-"4.0"}
+ARG OMPI_VERSION
+ENV OMPI_VERSION=${OMPI_VERSION:-"4.0.0"}
+ARG OMPI_PREFIX
+ENV OMPI_PREFIX=${OMPI_PREFIX:-"/opt/openmpi/${OMPI_VERSION}"}
+ARG OMPI_OPTIONS
+ENV OMPI_OPTIONS=${OMPI_OPTIONS:-"--enable-mpi-cxx --enable-shared"}
+
+ENV OMPI_TARBALL="openmpi-${OMPI_VERSION}.tar.gz"
+
+# build and install OpenMPI
 WORKDIR /tmp
+RUN set -eux; \
+      \
+      # checksums are not provided due to the build-time arguments OMPI_VERSION
+      wget "https://www.open-mpi.org/software/ompi/v${OMPI_VERSION_MAJOR_MINOR}/downloads/${OMPI_TARBALL}"; \
+      tar -xzf ${OMPI_TARBALL}; \
+      \
+      cd openmpi-${OMPI_VERSION}; \
+      ./configure \
+                  --prefix=${OMPI_PREFIX} \
+                  ${OMPI_OPTIONS} \
+      ; \
+      make -j "$(nproc)"; \
+      make install; \
+      \
+      rm -rf openmpi-${OMPI_VERSION} ${OMPI_TARBALL}
 
-## install basic tools
-RUN yum -y install yum-utils rpm-build\
-                   which wget autoconf automake\
-                   gcc gcc-c++ make\
-                   openssh openssh-server openssh-clients bind-utils
 
-## build and install OpenMPI
-RUN wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.0-1.src.rpm; \
-    rpm -ivh ./openmpi-4.0.0-1.src.rpm; \
-    cd /root/rpmbuild/SPECS/; \
-    rpmbuild -ba --define 'configure_options --prefix=/usr --enable-shared --enable-mpi-cxx' openmpi-4.0.0.spec; \
-    cd /root/rpmbuild/RPMS/x86_64/; \
-    yum -y install openmpi-4.0.0-1.el8.x86_64.rpm; \
-    cd; \
-    rm -rf /root/rpmbuild openmpi-4.0.0-1.src.rpm
+# stage 2: build the runtime environment
+FROM gcc:${GCC_VERSION}
 
-## build and install HDF5 library
-RUN wget -q -O hdf5.tgz https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.5/src/hdf5-1.10.5.tar.gz; \
-    tar -zxf hdf5.tgz; \
-    cd /tmp/hdf5-1.10.5; \
-    ./autogen.sh; \
-    ./configure --prefix=/usr --enable-cxx --enable-parallel --enable-unsupported; \
-    make -j24; make install; \
-    cd; \
-    rm -rf /tmp/hdf5-1.10.5 /tmp/hdf5.tgz
+# install mpi dependencies
+RUN apt-get update && \
+    apt-get install -y \
+            openssh-server
 
-## generate ssh keys
-RUN ssh-keygen -f /root/.ssh/id_rsa -q -N ""; \
-    mkdir -p ~/.ssh/ && chmod 700 ~/.ssh/
+# define environment variables
+ARG OMPI_VERSION
+ENV OMPI_VERSION=${OMPI_VERSION:-"4.0.0"}
+
+ENV OMPI_PATH="/opt/openmpi/${OMPI_VERSION}"
+
+# copy artifacts from stage 1
+COPY --from=builder ${OMPI_PATH} ${OMPI_PATH}
+
+# set environment variables for users
+RUN set -eu; \
+      { \
+        echo "export PATH=\${OMPI_PATH}/bin:\$PATH"; \
+        echo "export CPATH=\${OMPI_PATH}/include:\$CPATH"; \
+        echo "export LIBRARY_PATH=\${OMPI_PATH}/lib:\$LIBRARY_PATH"; \
+        echo "export LD_LIBRARY_PATH=\${OMPI_PATH}/lib:\$LD_LIBRARY_PATH"; \
+      } > /etc/profile.d/openmpi-${OMPI_VERSION}.sh; \
+      \
+      chmod 644 /etc/profile.d/openmpi-${OMPI_VERSION}.sh
+
+# define environment variables
+ARG GROUP_NAME
+ENV GROUP_NAME=${GROUP_NAME:-mpi}
+ARG GROUP_ID
+ENV GROUP_ID=${GROUP_ID:-1000}
+ARG USER_NAME
+ENV USER_NAME=${USER_NAME:-one}
+ARG USER_ID
+ENV USER_ID=${USER_ID:-1000}
+
+ENV USER_HOME="/home/${USER_NAME}"
+
+# create the first user
+RUN set -eu; \
+      \
+      groupadd -g ${GROUP_ID} ${GROUP_NAME}; \
+      useradd -g ${GROUP_ID} -u ${USER_ID} -d ${USER_HOME} -m ${USER_NAME}; \
+      \
+      echo "${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# transfer control to the newly added user
+WORKDIR ${USER_HOME}
+USER ${USER_NAME}
+
+# generate ssh keys
+RUN set -eu; \
+      \
+      ssh-keygen -f ${USER_HOME}/.ssh/id_rsa -q -N ""; \
+      mkdir -p ~/.ssh/ && chmod 700 ~/.ssh/
