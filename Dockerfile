@@ -58,6 +58,7 @@ RUN set -eu; \
              /etc/apk/repositories; \
       apk add --no-cache \
               build-base \
+              linux-headers \
               openssh
 
 # define environment variables
@@ -99,12 +100,14 @@ RUN set -eu; \
       \
       echo "${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-# transfer control to the newly added user
-WORKDIR ${USER_HOME}
+# generate ssh keys for the newly added user
 USER ${USER_NAME}
+WORKDIR ${USER_HOME}
 
-# generate ssh keys
 RUN set -eu; \
       \
       ssh-keygen -f ${USER_HOME}/.ssh/id_rsa -q -N ""; \
       mkdir -p ~/.ssh/ && chmod 700 ~/.ssh/
+
+USER root
+WORKDIR /root
