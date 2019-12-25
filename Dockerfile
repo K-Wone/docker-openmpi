@@ -59,7 +59,8 @@ RUN set -eu; \
       apk add --no-cache \
               build-base \
               linux-headers \
-              openssh
+              openssh \
+              sudo
 
 # define environment variables
 ARG OMPI_VERSION
@@ -71,14 +72,10 @@ ENV OMPI_PATH="/opt/openmpi/${OMPI_VERSION}"
 COPY --from=builder ${OMPI_PATH} ${OMPI_PATH}
 
 # set environment variables for users
-RUN set -eu; \
-      mkdir -p /usr/local/bin \
-               /usr/local/lib \
-               /usr/local/include \
-      ; \
-      ln -s ${OMPI_PATH}/bin/* /usr/local/bin; \
-      ln -s ${OMPI_PATH}/lib/* /usr/local/lib; \
-      ln -s ${OMPI_PATH}/include/* /usr/local/include
+ENV PATH="${OMPI_PATH}/bin:${PATH}"
+ENV CPATH="${OMPI_PATH}/include:${CPATH}"
+ENV LIBRARY_PATH="${OMPI_PATH}/lib:${LIBRARY_PATH}"
+ENV LD_LIBRARY_PATH="${OMPI_PATH}/lib:${LD_LIBRARY_PATH}"
 
 # define environment variables
 ARG GROUP_NAME
@@ -100,14 +97,19 @@ RUN set -eu; \
       \
       echo "${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
+# generate ssh keys for root
+RUN set -eu; \
+      \
+      ssh-keygen -f /root/.ssh/id_rsa -q -N ""; \
+      mkdir -p ~/.ssh/ && chmod 700 ~/.ssh/
+
 # generate ssh keys for the newly added user
 USER ${USER_NAME}
-WORKDIR ${USER_HOME}
 
+WORKDIR ${USER_HOME}
 RUN set -eu; \
       \
       ssh-keygen -f ${USER_HOME}/.ssh/id_rsa -q -N ""; \
       mkdir -p ~/.ssh/ && chmod 700 ~/.ssh/
 
 USER root
-WORKDIR /root
