@@ -2,6 +2,8 @@
 ARG GCC_VERSION=latest
 FROM leavesask/gcc:${GCC_VERSION} AS builder
 
+LABEL maintainer="Wang An <wangan.cs@gmail.com>"
+
 USER root
 
 # install basic buiding tools
