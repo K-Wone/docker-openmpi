@@ -22,7 +22,25 @@
 
 # How to build
 
+## make
+
 There are a bunch of build-time arguments you can use to build the GCC-OpenMPI image.
+
+It is hightly recommended that you build the image with `make`.
+
+```bash
+# Build an image for OpenMPI 4.0.0
+make OMPI_VMAJOR="4.0" OMPI_VMINOR="0"
+
+# Build and publish the image
+make release OMPI_VMAJOR="4.0" OMPI_VMINOR="0"
+```
+
+Check `Makefile` for more options.
+
+## docker build
+
+As an alternative, you can build the image with `docker build` command.
 
 ```bash
 docker build \
@@ -30,7 +48,9 @@ docker build \
         --build-arg OMPI_VMAJOR="4.0" \
         --build-arg OMPI_VMINOR="0" \
         --build-arg OMPI_OPTIONS="--enable-mpi-cxx" \
-        -t my-repo/gompi .
+        --build-arg BUILD_DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"` \
+        --build-arg VCS_REF=`git rev-parse --short HEAD` \
+        -t my-repo/gompi:latest .
 ```
 
 Arguments and their defaults are listed below.
