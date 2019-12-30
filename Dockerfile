@@ -17,21 +17,14 @@ RUN set -eu; \
               wget \
               which
 
-# define environment variables for building OpenMPI
+# stage 1.1: download OpenMPI source
 ARG OMPI_VMAJOR="4.0"
 ENV OMPI_VMAJOR=${OMPI_VMAJOR}
-
 ARG OMPI_VMINOR="0"
 ENV OMPI_VMINOR=${OMPI_VMINOR}
-
-ARG OMPI_OPTIONS="--enable-mpi-cxx --enable-shared"
-ENV OMPI_OPTIONS=${OMPI_OPTIONS}
-
 ENV OMPI_VERSION="${OMPI_VMAJOR}.${OMPI_VMINOR}"
-ENV OMPI_PREFIX="/opt/openmpi/${OMPI_VERSION}"
 ENV OMPI_TARBALL="openmpi-${OMPI_VERSION}.tar.gz"
 
-# stage 1.1: download OpenMPI source
 WORKDIR /tmp
 RUN set -eux; \
       \
@@ -40,6 +33,10 @@ RUN set -eux; \
       tar -xzf ${OMPI_TARBALL}
 
 # stage 1.2: build and install OpenMPI
+ARG OMPI_OPTIONS="--enable-mpi-cxx --enable-shared"
+ENV OMPI_OPTIONS=${OMPI_OPTIONS}
+ENV OMPI_PREFIX="/opt/openmpi/${OMPI_VERSION}"
+
 WORKDIR /tmp/openmpi-${OMPI_VERSION}
 RUN set -eux; \
       \
