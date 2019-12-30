@@ -1,3 +1,6 @@
+[![layers](https://images.microbadger.com/badges/image/leavesask/gompi.svg)](https://microbadger.com/images/leavesask/gompi "Get your own image badge on microbadger.com")
+[![version](https://images.microbadger.com/badges/version/leavesask/gompi.svg)](https://microbadger.com/images/leavesask/gompi)
+
 # Supported tags
 
 - `4.0.0`
