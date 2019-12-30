@@ -1,6 +1,8 @@
 # stage 1: build OpenMPI with GCC
-ARG BASE_VERSION=latest
-FROM alpine:${BASE_VERSION} AS builder
+ARG GCC_VERSION=latest
+FROM leavesask/gcc:${GCC_VERSION} AS builder
+
+USER root
 
 # install basic buiding tools
 RUN set -eu; \
@@ -10,33 +12,37 @@ RUN set -eu; \
       apk add --no-cache \
               autoconf \
               automake \
-              build-base \
               linux-headers \
               make \
               wget \
               which
 
 # define environment variables for building OpenMPI
-ARG OMPI_VERSION_MAJOR_MINOR
-ENV OMPI_VERSION_MAJOR_MINOR=${OMPI_VERSION_MAJOR_MINOR:-"4.0"}
-ARG OMPI_VERSION
-ENV OMPI_VERSION=${OMPI_VERSION:-"4.0.0"}
-ARG OMPI_PREFIX
-ENV OMPI_PREFIX=${OMPI_PREFIX:-"/opt/openmpi/${OMPI_VERSION}"}
-ARG OMPI_OPTIONS
-ENV OMPI_OPTIONS=${OMPI_OPTIONS:-"--enable-mpi-cxx --enable-shared"}
+ARG OMPI_VMAJOR="4.0"
+ENV OMPI_VMAJOR=${OMPI_VMAJOR}
 
+ARG OMPI_VMINOR="0"
+ENV OMPI_VMINOR=${OMPI_VMINOR}
+
+ARG OMPI_OPTIONS="--enable-mpi-cxx --enable-shared"
+ENV OMPI_OPTIONS=${OMPI_OPTIONS}
+
+ENV OMPI_VERSION="${OMPI_VMAJOR}.${OMPI_VMINOR}"
+ENV OMPI_PREFIX="/opt/openmpi/${OMPI_VERSION}"
 ENV OMPI_TARBALL="openmpi-${OMPI_VERSION}.tar.gz"
 
-# build and install OpenMPI
+# stage 1.1: download OpenMPI source
 WORKDIR /tmp
 RUN set -eux; \
       \
       # checksums are not provided due to the build-time arguments OMPI_VERSION
-      wget "https://www.open-mpi.org/software/ompi/v${OMPI_VERSION_MAJOR_MINOR}/downloads/${OMPI_TARBALL}"; \
-      tar -xzf ${OMPI_TARBALL}; \
+      wget "https://www.open-mpi.org/software/ompi/v${OMPI_VMAJOR}/downloads/${OMPI_TARBALL}"; \
+      tar -xzf ${OMPI_TARBALL}
+
+# stage 1.2: build and install OpenMPI
+WORKDIR /tmp/openmpi-${OMPI_VERSION}
+RUN set -eux; \
       \
-      cd openmpi-${OMPI_VERSION}; \
       ./configure \
                   --prefix=${OMPI_PREFIX} \
                   ${OMPI_OPTIONS} \
@@ -48,8 +54,10 @@ RUN set -eux; \
 
 
 # stage 2: build the runtime environment
-ARG BASE_VERSION
-FROM alpine:${BASE_VERSION}
+ARG GCC_VERSION
+FROM leavesask/gcc:${GCC_VERSION}
+
+USER root
 
 # install mpi dependencies
 RUN set -eu; \
@@ -57,15 +65,14 @@ RUN set -eu; \
       sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' \
              /etc/apk/repositories; \
       apk add --no-cache \
-              build-base \
               linux-headers \
               openssh \
               sudo
 
 # define environment variables
-ARG OMPI_VERSION
-ENV OMPI_VERSION=${OMPI_VERSION:-"4.0.0"}
-
+ARG OMPI_VMAJOR="4.0"
+ARG OMPI_VMINOR="0"
+ENV OMPI_VERSION="${OMPI_VMAJOR}.${OMPI_VMINOR}"
 ENV OMPI_PATH="/opt/openmpi/${OMPI_VERSION}"
 
 # copy artifacts from stage 1
@@ -111,5 +118,3 @@ RUN set -eu; \
       \
       ssh-keygen -f ${USER_HOME}/.ssh/id_rsa -q -N ""; \
       mkdir -p ~/.ssh/ && chmod 700 ~/.ssh/
-
-USER root
