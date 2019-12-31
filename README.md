@@ -1,6 +1,7 @@
 [![Layers](https://images.microbadger.com/badges/image/leavesask/gompi.svg)](https://microbadger.com/images/leavesask/gompi)
 [![Version](https://images.microbadger.com/badges/version/leavesask/gompi.svg)](https://hub.docker.com/repository/docker/leavesask/gompi)
 [![Commit](https://images.microbadger.com/badges/commit/leavesask/gompi.svg)](https://github.com/K-Wone/docker-openmpi)
+[![License](https://images.microbadger.com/badges/license/leavesask/gompi.svg)](https://github.com/K-Wone/docker-openmpi)
 [![Docker Pulls](https://img.shields.io/docker/pulls/leavesask/gompi?color=informational)](https://hub.docker.com/repository/docker/leavesask/gompi)
 [![Automated Build](https://img.shields.io/docker/automated/leavesask/gompi)](https://hub.docker.com/repository/docker/leavesask/gompi)
 

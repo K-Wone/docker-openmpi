@@ -122,10 +122,11 @@ RUN set -eu; \
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
 ARG VCS_REF
-ARG VCS_URL
+ARG VCS_URL="https://github.com/K-Wone/docker-openmpi"
 LABEL org.label-schema.build-date=${BUILD_DATE} \
       org.label-schema.name="OpenMPI docker image" \
       org.label-schema.description="A lightweight image for GCC and OpenMPI" \
+      org.label-schema.license="MIT" \
       org.label-schema.vcs-ref=${VCS_REF} \
       org.label-schema.vcs-url=${VCS_URL} \
       org.label-schema.schema-version="1.0"
