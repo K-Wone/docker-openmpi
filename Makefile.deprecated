@@ -3,16 +3,15 @@
 #===============================================================================
 
 # Build-time arguments
-SPACK_VERSION  ?= 0.14
-GCC_VERSION    ?= 9.2.0
-OMPI_VERSION   ?= 4.0.0
-
-# Spack variants
-OMPI_OPTIONS  ?= ""
+BASE_IMAGE   ?= gcc
+BASE_TAG     ?= 9.2.0
+OMPI_VMAJOR  ?= 4.0
+OMPI_VMINOR  ?= 0
+OMPI_OPTIONS ?= "--enable-mpi-cxx --enable-shared"
 
 # Image name
 DOCKER_IMAGE ?= leavesask/gompi
-DOCKER_TAG   := $(OMPI_VERSION)
+DOCKER_TAG   := $(OMPI_VMAJOR).$(OMPI_VMINOR)
 
 #===============================================================================
 # Variables and objects
@@ -20,8 +19,8 @@ DOCKER_TAG   := $(OMPI_VERSION)
 
 # Append a suffix to the tag if the version number of GCC
 # is specified
-ifneq ($(GCC_VERSION),latest)
-    DOCKER_TAG := $(DOCKER_TAG)-gcc-$(GCC_VERSION)
+ifneq ($(BASE_TAG),latest)
+    DOCKER_TAG := $(DOCKER_TAG)-gcc-$(BASE_TAG)
 endif
 
 BUILD_DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -43,9 +42,10 @@ release: docker_build docker_push output
 docker_build:
 	# Build Docker image
 	docker build \
-                 --build-arg SPACK_VERSION=$(SPACK_VERSION) \
-                 --build-arg GCC_VERSION=$(GCC_VERSION) \
-                 --build-arg OMPI_VERSION=$(OMPI_VERSION) \
+                 --build-arg BASE_IMAGE=$(BASE_IMAGE) \
+                 --build-arg BASE_TAG=$(BASE_TAG) \
+                 --build-arg OMPI_VMAJOR=$(OMPI_VMAJOR) \
+                 --build-arg OMPI_VMINOR=$(OMPI_VMINOR) \
                  --build-arg OMPI_OPTIONS=$(OMPI_OPTIONS) \
                  --build-arg BUILD_DATE=$(BUILD_DATE) \
                  --build-arg VCS_URL=$(VCS_URL) \

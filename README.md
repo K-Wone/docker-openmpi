@@ -7,8 +7,8 @@
 
 # Supported tags
 
-- `4.0.0`
-- `3.1.5`
+- `4.0.0`, `4.0.0-gcc-9.2.0`, `4.0.0-gcc-5.5.0`
+- `3.1.5`, `3.1.5-gcc-9.2.0`, `3.1.5-gcc-5.5.0`
 
 # How to use
 
@@ -26,18 +26,20 @@
 
 # How to build
 
+The base image is [spack/ubuntu-xenial](https://hub.docker.com/r/spack/ubuntu-xenial).
+
 ## make
 
 There are a bunch of build-time arguments you can use to build the GCC-OpenMPI image.
 
-It is hightly recommended that you build the image with `make`.
+It is highly recommended that you build the image with `make`.
 
 ```bash
 # Build an image for OpenMPI 4.0.0
-make OMPI_VMAJOR="4.0" OMPI_VMINOR="0"
+make OMPI_VERSION="4.0.0" GCC_VERSION="9.2.0"
 
 # Build and publish the image
-make release OMPI_VMAJOR="4.0" OMPI_VMINOR="0"
+make release OMPI_VERSION="4.0.0"
 ```
 
 Check `Makefile` for more options.
@@ -49,9 +51,7 @@ As an alternative, you can build the image with `docker build` command.
 ```bash
 docker build \
         --build-arg GCC_VERSION="latest" \
-        --build-arg OMPI_VMAJOR="4.0" \
-        --build-arg OMPI_VMINOR="0" \
-        --build-arg OMPI_OPTIONS="--enable-mpi-cxx" \
+        --build-arg OMPI_VERSION="4.0.0" \
         --build-arg BUILD_DATE=`date -u +"%Y-%m-%dT%H:%M:%SZ"` \
         --build-arg VCS_REF=`git rev-parse --short HEAD` \
         -t my-repo/gompi:latest .
@@ -59,19 +59,12 @@ docker build \
 
 Arguments and their defaults are listed below.
 
-- `GCC_VERSION`: tag (default=`latest`)
-  - This is the tag of the base image for all of the stages.
-  - The docker repository defaults to `leavesask/gcc`.
+- `GCC_VERSION`: The version of GCC supported by spack (defaults to `9.2.0`)
 
-- `OMPI_VMAJOR`: X.X (default=`4.0`)
+- `OMPI_VERSION`: The version of OpenMPI supported by spack (defaults to `4.0.0`)
 
-- `OMPI_VMINOR`: X (default=`0`)
+- `OMPI_OPTIONS`: Spack variants (defaults to none)
 
-- `OMPI_OPTIONS`: option\[=value\] (default=`--enable-mpi-cxx --enable-shared`)
-  - Options needed to configure the installation.
-  - The default installation path is `/opt/openmpi/${OMPI_VERSION}` so that option `--prefix` is unnecessary.
-
-- `GROUP_NAME`: value (default=`mpi`)
-- `USER_NAME`: value (default=`one`)
-  - A user to be added.
+- `GROUP_NAME`: User group (defaults to `mpi`)
+- `USER_NAME`: User name (defaults to `one`)
   - This is the default user when the image is started.

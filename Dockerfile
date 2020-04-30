@@ -1,87 +1,38 @@
-# stage 1: build OpenMPI with GCC
-ARG GCC_VERSION=latest
-FROM leavesask/gcc:${GCC_VERSION} AS builder
+# Build OpenMPI with latest spack
+ARG SPACK_VERSION="0.14"
+FROM spack/ubuntu-xenial:${SPACK_VERSION} AS builder
 
 LABEL maintainer="Wang An <wangan.cs@gmail.com>"
 
 USER root
 
-# install basic buiding tools
-RUN set -eu; \
-      \
-      sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' \
-             /etc/apk/repositories; \
-      apk add --no-cache \
-              autoconf \
-              automake \
-              linux-headers \
-              make \
-              wget \
-              which
-
-# stage 1.1: download OpenMPI source
-ARG OMPI_VMAJOR="4.0"
-ENV OMPI_VMAJOR=${OMPI_VMAJOR}
-ARG OMPI_VMINOR="0"
-ENV OMPI_VMINOR=${OMPI_VMINOR}
-ENV OMPI_VERSION="${OMPI_VMAJOR}.${OMPI_VMINOR}"
-ENV OMPI_TARBALL="openmpi-${OMPI_VERSION}.tar.gz"
-
-WORKDIR /tmp
-RUN set -eux; \
-      \
-      # checksums are not provided due to the build-time arguments OMPI_VERSION
-      wget "https://www.open-mpi.org/software/ompi/v${OMPI_VMAJOR}/downloads/${OMPI_TARBALL}"; \
-      tar -xzf ${OMPI_TARBALL}
-
-# stage 1.2: build and install OpenMPI
-ARG OMPI_OPTIONS="--enable-mpi-cxx --enable-shared"
+ARG GCC_VERSION="9.2.0"
+ENV GCC_VERSION=${GCC_VERSION}
+ARG OMPI_VERSION="4.0.0"
+ENV OMPI_VERSION=${OMPI_VERSION}
+ARG OMPI_OPTIONS=""
 ENV OMPI_OPTIONS=${OMPI_OPTIONS}
-ENV OMPI_PREFIX="/opt/openmpi/${OMPI_VERSION}"
 
-WORKDIR /tmp/openmpi-${OMPI_VERSION}
-RUN set -eux; \
-      \
-      ./configure \
-                  --prefix=${OMPI_PREFIX} \
-                  ${OMPI_OPTIONS} \
-      ; \
-      make -j "$(nproc)"; \
-      make install; \
-      \
-      rm -rf openmpi-${OMPI_VERSION} ${OMPI_TARBALL}
-
-
-# stage 2: build the runtime environment
-ARG GCC_VERSION
-FROM leavesask/gcc:${GCC_VERSION}
-
-USER root
-
-# install mpi dependencies
+# install GCC
 RUN set -eu; \
       \
-      sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' \
-             /etc/apk/repositories; \
-      apk add --no-cache \
-              linux-headers \
-              openssh \
+      spack install gcc@${GCC_VERSION}; \
+      spack load gcc@${GCC_VERSION}; \
+      spack compiler add
+
+# install OpenMPI
+RUN set -eu; \
+      \
+      spack install openmpi@${OMPI_VERSION} %gcc@${GCC_VERSION} ${OMPI_OPTIONS}; \
+      spack load -r openmpi@${OMPI_VERSION}
+
+# install mpi runtime dependencies
+RUN set -eu; \
+      \
+      apt-get update; \
+      apt-get install -y \
+              openssh-server \
               sudo
-
-# define environment variables
-ARG OMPI_VMAJOR="4.0"
-ARG OMPI_VMINOR="0"
-ENV OMPI_VERSION="${OMPI_VMAJOR}.${OMPI_VMINOR}"
-ENV OMPI_PATH="/opt/openmpi/${OMPI_VERSION}"
-
-# copy artifacts from stage 1
-COPY --from=builder ${OMPI_PATH} ${OMPI_PATH}
-
-# set environment variables for users
-ENV PATH="${OMPI_PATH}/bin:${PATH}"
-ENV CPATH="${OMPI_PATH}/include:${CPATH}"
-ENV LIBRARY_PATH="${OMPI_PATH}/lib:${LIBRARY_PATH}"
-ENV LD_LIBRARY_PATH="${OMPI_PATH}/lib:${LD_LIBRARY_PATH}"
 
 # define environment variables
 ARG GROUP_NAME
@@ -95,11 +46,16 @@ ENV USER_ID=${USER_ID:-1000}
 
 ENV USER_HOME="/home/${USER_NAME}"
 
+# initialize spack environment for all users
+ENV SPACK_ROOT=/opt/spack
+ENV PATH=${SPACK_ROOT}/bin:$PATH
+RUN source ${SPACK_ROOT}/share/spack/setup-env.sh
+
 # create the first user
 RUN set -eu; \
       \
-      addgroup -g ${GROUP_ID} ${GROUP_NAME}; \
-      adduser  -D -G ${GROUP_NAME} -u ${USER_ID} -h ${USER_HOME} ${USER_NAME}; \
+      groupadd -g ${GROUP_ID} ${GROUP_NAME}; \
+      useradd  -m -G ${GROUP_NAME} -u ${USER_ID} ${USER_NAME}; \
       \
       echo "${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
@@ -118,14 +74,13 @@ RUN set -eu; \
       ssh-keygen -f ${USER_HOME}/.ssh/id_rsa -q -N ""; \
       mkdir -p ~/.ssh/ && chmod 700 ~/.ssh/
 
-
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
 ARG VCS_REF
-ARG VCS_URL="https://github.com/K-Wone/docker-openmpi"
+ARG VCS_URL="https://github.com/alephpiece/docker-openmpi"
 LABEL org.label-schema.build-date=${BUILD_DATE} \
       org.label-schema.name="OpenMPI docker image" \
-      org.label-schema.description="A lightweight image for GCC and OpenMPI" \
+      org.label-schema.description="An image for GCC and OpenMPI" \
       org.label-schema.license="MIT" \
       org.label-schema.vcs-ref=${VCS_REF} \
       org.label-schema.vcs-url=${VCS_URL} \
