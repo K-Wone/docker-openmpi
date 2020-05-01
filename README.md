@@ -26,7 +26,7 @@
 
 # How to build
 
-The base image is [spack/ubuntu-xenial](https://hub.docker.com/r/spack/ubuntu-xenial).
+The base image is [spack](https://hub.docker.com/r/spack).
 
 ## make
 

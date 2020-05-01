@@ -6,11 +6,11 @@ on:
       - master
 
 jobs:
-  build:
+  build_4_0_0:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@master
 
     - name: Publish to Registry
       uses: elgohr/Publish-Docker-Github-Action@master
@@ -18,9 +18,32 @@ jobs:
         BUILD_DATE: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
         VCS_URL: $(git config --get remote.origin.url)
         VCS_REF: $(git rev-parse --short HEAD)
+        OMPI_VERSION: 4.0.0
       with:
         name: leavesask/gompi
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-        buildargs: BUILD_DATE,VCS_URL,VCS_REF
+        buildargs: OMPI_VERSION,BUILD_DATE,VCS_URL,VCS_REF
         buildoptions: "--compress"
+        tags: "latest,4.0.0"
+
+  build_3_1_5:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@master
+
+    - name: Publish to Registry
+      uses: elgohr/Publish-Docker-Github-Action@master
+      env:
+        BUILD_DATE: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        VCS_URL: $(git config --get remote.origin.url)
+        VCS_REF: $(git rev-parse --short HEAD)
+        OMPI_VERSION: 3.1.5
+      with:
+        name: leavesask/gompi
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        buildargs: OMPI_VERSION,BUILD_DATE,VCS_URL,VCS_REF
+        buildoptions: "--compress"
+        tags: "3.1.5"
