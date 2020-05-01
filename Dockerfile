@@ -1,8 +1,6 @@
-# Build OpenMPI with latest spack
-ARG SPACK_VERSION="0.14"
-FROM spack/ubuntu-xenial:${SPACK_VERSION} AS builder
-
-LABEL maintainer="Wang An <wangan.cs@gmail.com>"
+# stage 1: build OpenMPI with latest spack
+ARG GCC_VERSION="9.2.0"
+FROM leavesask/gcc:${GCC_VERSION} AS builder
 
 USER root
 
@@ -13,18 +11,29 @@ ENV OMPI_VERSION=${OMPI_VERSION}
 ARG OMPI_OPTIONS=""
 ENV OMPI_OPTIONS=${OMPI_OPTIONS}
 
-# install GCC
-RUN set -eu; \
-      \
-      spack install gcc@${GCC_VERSION}; \
-      spack load gcc@${GCC_VERSION}; \
-      spack compiler add
-
 # install OpenMPI
+RUN spack install --show-log-on-error -y openmpi@${OMPI_VERSION} %gcc@${GCC_VERSION} ${OMPI_OPTIONS}
+
+
+# stage 2: build the runtime environment
+ARG GCC_VERSION
+FROM leavesask/gcc:${GCC_VERSION}
+
+LABEL maintainer="Wang An <wangan.cs@gmail.com>"
+
+USER root
+
+ENV SPACK_ROOT=/opt/spack
+ENV PATH=${SPACK_ROOT}/bin:$PATH
+
+# copy artifacts from stage 1
+COPY --from=builder ${SPACK_ROOT} ${SPACK_ROOT}
+
+# initialize spack environment for all users
 RUN set -eu; \
       \
-      spack install openmpi@${OMPI_VERSION} %gcc@${GCC_VERSION} ${OMPI_OPTIONS}; \
-      spack load -r openmpi@${OMPI_VERSION}
+      source ${SPACK_ROOT}/share/spack/setup-env.sh; \
+      spack load openmpi
 
 # install mpi runtime dependencies
 RUN set -eu; \
@@ -34,7 +43,7 @@ RUN set -eu; \
               openssh-server \
               sudo
 
-# define environment variables
+# create a new user
 ARG GROUP_NAME
 ENV GROUP_NAME=${GROUP_NAME:-mpi}
 ARG GROUP_ID
@@ -45,11 +54,6 @@ ARG USER_ID
 ENV USER_ID=${USER_ID:-1000}
 
 ENV USER_HOME="/home/${USER_NAME}"
-
-# initialize spack environment for all users
-ENV SPACK_ROOT=/opt/spack
-ENV PATH=${SPACK_ROOT}/bin:$PATH
-RUN source ${SPACK_ROOT}/share/spack/setup-env.sh
 
 # create the first user
 RUN set -eu; \

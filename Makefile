@@ -3,7 +3,6 @@
 #===============================================================================
 
 # Build-time arguments
-SPACK_VERSION  ?= 0.14
 GCC_VERSION    ?= 9.2.0
 OMPI_VERSION   ?= 4.0.0
 
@@ -20,8 +19,9 @@ DOCKER_TAG   := $(OMPI_VERSION)
 
 # Append a suffix to the tag if the version number of GCC
 # is specified
+DOCKER_TAG_FULL := $(DOCKER_TAG)
 ifneq ($(GCC_VERSION),latest)
-    DOCKER_TAG := $(DOCKER_TAG)-gcc-$(GCC_VERSION)
+    DOCKER_TAG_FULL := $(DOCKER_TAG)-gcc-$(GCC_VERSION)
 endif
 
 BUILD_DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -43,7 +43,6 @@ release: docker_build docker_push output
 docker_build:
 	# Build Docker image
 	docker build \
-                 --build-arg SPACK_VERSION=$(SPACK_VERSION) \
                  --build-arg GCC_VERSION=$(GCC_VERSION) \
                  --build-arg OMPI_VERSION=$(OMPI_VERSION) \
                  --build-arg OMPI_OPTIONS=$(OMPI_OPTIONS) \
@@ -59,6 +58,12 @@ docker_push:
 	# Push to DockerHub
 	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
 	docker push $(DOCKER_IMAGE):latest
+
+	# Tag image with the full tag
+	if [[ "$(DOCKER_TAG)" != "$(DOCKER_TAG_FULL)" ]]; then \
+      docker tag $(DOCKER_IMAGE):$(DOCKER_TAG) $(DOCKER_IMAGE):$(DOCKER_TAG_FULL) && \
+      docker push $(DOCKER_IMAGE):$(DOCKER_TAG_FULL); \
+    fi
 
 output:
 	@echo Docker Image: $(DOCKER_IMAGE):$(DOCKER_TAG)
