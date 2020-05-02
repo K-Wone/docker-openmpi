@@ -1,6 +1,8 @@
-# stage 1: build OpenMPI with latest spack
+# build OpenMPI with latest spack
 ARG GCC_VERSION="9.2.0"
-FROM leavesask/gcc:${GCC_VERSION} AS builder
+FROM leavesask/gcc:${GCC_VERSION}
+
+LABEL maintainer="Wang An <wangan.cs@gmail.com>"
 
 USER root
 
@@ -12,28 +14,15 @@ ARG OMPI_OPTIONS=""
 ENV OMPI_OPTIONS=${OMPI_OPTIONS}
 
 # install OpenMPI
-RUN spack install --show-log-on-error -y openmpi@${OMPI_VERSION} %gcc@${GCC_VERSION} ${OMPI_OPTIONS}
-
-
-# stage 2: build the runtime environment
-ARG GCC_VERSION
-FROM leavesask/gcc:${GCC_VERSION}
-
-LABEL maintainer="Wang An <wangan.cs@gmail.com>"
-
-USER root
-
-ENV SPACK_ROOT=/opt/spack
-ENV PATH=${SPACK_ROOT}/bin:$PATH
-
-# copy artifacts from stage 1
-COPY --from=builder ${SPACK_ROOT} ${SPACK_ROOT}
-
-# initialize spack environment for all users
 RUN set -eu; \
       \
-      source ${SPACK_ROOT}/share/spack/setup-env.sh; \
-      spack load openmpi
+      spack install --show-log-on-error -y openmpi@${OMPI_VERSION} %gcc@${GCC_VERSION} ${OMPI_OPTIONS}; \
+      spack load openmpi@${OMPI_VERSION}
+
+# initialize spack environment for all users
+ENV SPACK_ROOT=/opt/spack
+ENV PATH=${SPACK_ROOT}/bin:$PATH
+RUN source ${SPACK_ROOT}/share/spack/setup-env.sh
 
 # install mpi runtime dependencies
 RUN set -eu; \
@@ -61,7 +50,10 @@ RUN set -eu; \
       groupadd -g ${GROUP_ID} ${GROUP_NAME}; \
       useradd  -m -G ${GROUP_NAME} -u ${USER_ID} ${USER_NAME}; \
       \
-      echo "${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+      echo "${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers; \
+      \
+      cp -r ~/.spack $USER_HOME; \
+      chown -R ${USER_NAME}: ${USER_HOME}/.spack
 
 # generate ssh keys for root
 RUN set -eu; \
@@ -73,6 +65,7 @@ RUN set -eu; \
 USER ${USER_NAME}
 
 WORKDIR ${USER_HOME}
+RUN source ${SPACK_ROOT}/share/spack/setup-env.sh
 RUN set -eu; \
       \
       ssh-keygen -f ${USER_HOME}/.ssh/id_rsa -q -N ""; \
