@@ -14,15 +14,7 @@ ARG OMPI_OPTIONS=""
 ENV OMPI_OPTIONS=${OMPI_OPTIONS}
 
 # install OpenMPI
-RUN set -eu; \
-      \
-      spack install --show-log-on-error -y openmpi@${OMPI_VERSION} %gcc@${GCC_VERSION} ${OMPI_OPTIONS}; \
-      spack load openmpi@${OMPI_VERSION}
-
-# initialize spack environment for all users
-ENV SPACK_ROOT=/opt/spack
-ENV PATH=${SPACK_ROOT}/bin:$PATH
-RUN source ${SPACK_ROOT}/share/spack/setup-env.sh
+RUN spack install --show-log-on-error -y openmpi@${OMPI_VERSION} %gcc@${GCC_VERSION} ${OMPI_OPTIONS}
 
 # install mpi runtime dependencies
 RUN set -eu; \
@@ -62,14 +54,16 @@ RUN set -eu; \
       mkdir -p ~/.ssh/ && chmod 700 ~/.ssh/
 
 # generate ssh keys for the newly added user
-USER ${USER_NAME}
-
-WORKDIR ${USER_HOME}
-RUN source ${SPACK_ROOT}/share/spack/setup-env.sh
+USER $USER_NAME
+WORKDIR $USER_HOME
 RUN set -eu; \
       \
       ssh-keygen -f ${USER_HOME}/.ssh/id_rsa -q -N ""; \
       mkdir -p ~/.ssh/ && chmod 700 ~/.ssh/
+
+# setup environment
+RUN echo "spack load -r openmpi@${OMPI_VERSION}" >> ${USER_HOME}/.bashrc
+
 
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
@@ -82,3 +76,7 @@ LABEL org.label-schema.build-date=${BUILD_DATE} \
       org.label-schema.vcs-ref=${VCS_REF} \
       org.label-schema.vcs-url=${VCS_URL} \
       org.label-schema.schema-version="1.0"
+
+# setup entrypoint
+ENTRYPOINT ["/bin/bash"]
+CMD ["spack find --loaded"]
