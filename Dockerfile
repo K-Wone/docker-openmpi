@@ -13,8 +13,13 @@ ENV OMPI_VERSION=${OMPI_VERSION}
 ARG OMPI_OPTIONS=""
 ENV OMPI_OPTIONS=${OMPI_OPTIONS}
 
+# set spack root
+ENV SPACK_ROOT=/opt/spack
+
 # install OpenMPI
-RUN spack install --show-log-on-error -y openmpi@${OMPI_VERSION} %gcc@${GCC_VERSION} ${OMPI_OPTIONS}
+RUN set -e; \
+    spack install openmpi@${OMPI_VERSION} %gcc@${GCC_VERSION} ${OMPI_OPTIONS}; \
+    spack clean -a
 
 # install mpi runtime dependencies
 RUN set -eu; \
@@ -39,13 +44,16 @@ ENV USER_HOME="/home/${USER_NAME}"
 # create the first user
 RUN set -eu; \
       \
-      groupadd -g ${GROUP_ID} ${GROUP_NAME}; \
-      useradd  -m -G ${GROUP_NAME} -u ${USER_ID} ${USER_NAME}; \
-      \
-      echo "${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers; \
-      \
-      cp -r ~/.spack $USER_HOME; \
-      chown -R ${USER_NAME}: ${USER_HOME}/.spack
+      if ! id -u ${USER_NAME} > /dev/null 2>&1; then \
+          groupadd -g ${GROUP_ID} ${GROUP_NAME}; \
+          useradd  -m -G ${GROUP_NAME} -u ${USER_ID} ${USER_NAME}; \
+          \
+          echo "${USER_NAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers; \
+          \
+          cp -r ~/.spack $USER_HOME; \
+          chown -R ${USER_NAME}: $USER_HOME/.spack; \
+          chown -R ${USER_NAME}: $SPACK_ROOT; \
+      fi
 
 # generate ssh keys for root
 RUN set -eu; \
@@ -61,11 +69,22 @@ RUN set -eu; \
       ssh-keygen -f ${USER_HOME}/.ssh/id_rsa -q -N ""; \
       mkdir -p ~/.ssh/ && chmod 700 ~/.ssh/
 
-# setup environment
-RUN echo "spack load -r openmpi@${OMPI_VERSION}" >> ${USER_HOME}/.bashrc
+# setup development environment
+ENV ENV_FILE="$USER_HOME/setup-env.sh"
+RUN set -e; \
+      \
+      echo "#!/bin/env bash" > $ENV_FILE; \
+      echo "source $SPACK_ROOT/share/spack/setup-env.sh" >> $ENV_FILE; \
+      echo "spack load -r openmpi@${OMPI_VERSION}" >> $ENV_FILE
+
+# reset the entrypoint
+ENTRYPOINT []
+CMD ["/bin/bash"]
 
 
+#-----------------------------------------------------------------------
 # Build-time metadata as defined at http://label-schema.org
+#-----------------------------------------------------------------------
 ARG BUILD_DATE
 ARG VCS_REF
 ARG VCS_URL="https://github.com/alephpiece/docker-openmpi"
@@ -76,7 +95,3 @@ LABEL org.label-schema.build-date=${BUILD_DATE} \
       org.label-schema.vcs-ref=${VCS_REF} \
       org.label-schema.vcs-url=${VCS_URL} \
       org.label-schema.schema-version="1.0"
-
-# setup entrypoint
-ENTRYPOINT ["/bin/bash"]
-CMD ["spack find --loaded"]
