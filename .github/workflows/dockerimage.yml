@@ -20,11 +20,12 @@ jobs:
         VCS_REF: $(git rev-parse --short HEAD)
         GCC_VERSION: 9.2.0
         OMPI_VERSION: 4.0.0
+        EXTRA_SPECS: "target=skylake"
       with:
         name: leavesask/gompi
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-        buildargs: GCC_VERSION,OMPI_VERSION,BUILD_DATE,VCS_URL,VCS_REF
+        buildargs: GCC_VERSION,OMPI_VERSION,EXTRA_SPECS,BUILD_DATE,VCS_URL,VCS_REF
         buildoptions: "--compress"
         tags: "latest,4.0.0,4.0.0-gcc-9.2.0"
 
@@ -42,10 +43,11 @@ jobs:
         VCS_REF: $(git rev-parse --short HEAD)
         GCC_VERSION: 9.2.0
         OMPI_VERSION: 3.1.5
+        EXTRA_SPECS: "target=skylake"
       with:
         name: leavesask/gompi
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-        buildargs: GCC_VERSION,OMPI_VERSION,BUILD_DATE,VCS_URL,VCS_REF
+        buildargs: GCC_VERSION,OMPI_VERSION,EXTRA_SPECS,BUILD_DATE,VCS_URL,VCS_REF
         buildoptions: "--compress"
         tags: "3.1.5,3.1.5-gcc-9.2.0"

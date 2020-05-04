@@ -7,6 +7,7 @@ GCC_VERSION    ?= 9.2.0
 OMPI_VERSION   ?= 4.0.0
 
 # Spack variants
+EXTRA_SPECS   ?= "target=skylake"
 OMPI_OPTIONS  ?= ""
 
 # Image name
@@ -46,6 +47,7 @@ docker_build:
                  --build-arg GCC_VERSION=$(GCC_VERSION) \
                  --build-arg OMPI_VERSION=$(OMPI_VERSION) \
                  --build-arg OMPI_OPTIONS=$(OMPI_OPTIONS) \
+                 --build-arg EXTRA_SPECS=$(EXTRA_SPECS) \
                  --build-arg BUILD_DATE=$(BUILD_DATE) \
                  --build-arg VCS_URL=$(VCS_URL) \
                  --build-arg VCS_REF=$(GIT_COMMIT) \
